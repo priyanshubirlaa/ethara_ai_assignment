@@ -1,8 +1,9 @@
 package com.hotel.book.service.Impl;
 
 import java.time.LocalDate;
-import java.util.List;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +27,7 @@ public class RoomServiceImpl implements RoomService {
     private final RoomRepository roomRepository;
     private final HotelRepository hotelRepository;
 
+    @CacheEvict(value = "rooms", key = "#hotelId + '-' + #pageable.pageNumber", allEntries = true)
     @Override
     public RoomResponseDTO addRoomToHotel(Long hotelId, RoomRequestDTO request) {
 
@@ -41,6 +43,7 @@ public class RoomServiceImpl implements RoomService {
         return mapToResponse(saved);
     }
 
+    @Cacheable(value = "rooms", key = "#hotelId + '-' + #pageable.pageNumber")
     @Override
     public Page<RoomResponseDTO> getRoomsByHotel(Long hotelId, Pageable pageable) {
     

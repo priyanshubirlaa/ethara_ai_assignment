@@ -1,6 +1,5 @@
 package com.hotel.book.controller;
 
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -17,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.hotel.book.dto.HotelRequestDTO;
 import com.hotel.book.dto.HotelResponseDTO;
+import com.hotel.book.dto.PageResponse;
 import com.hotel.book.service.HotelService;
 
 import lombok.RequiredArgsConstructor;
@@ -35,21 +35,21 @@ public class HotelController {
     }
 
     @GetMapping
-public ResponseEntity<Page<HotelResponseDTO>> getHotels(
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "10") int size,
-        @RequestParam(defaultValue = "id") String sortBy,
-        @RequestParam(defaultValue = "asc") String sortDir,
-        @RequestParam(required = false) String city) {
+    public ResponseEntity<PageResponse<HotelResponseDTO>> getHotels(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDir,
+            @RequestParam(required = false) String city) {
 
-    Sort sort = sortDir.equalsIgnoreCase("desc")
-            ? Sort.by(sortBy).descending()
-            : Sort.by(sortBy).ascending();
+        Sort sort = sortDir.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
 
-    Pageable pageable = PageRequest.of(page, size, sort);
+        Pageable pageable = PageRequest.of(page, size, sort);
 
-    return ResponseEntity.ok(hotelService.getHotels(city, pageable));
-}
+        return ResponseEntity.ok(hotelService.getHotels(city, pageable));
+    }
 
     @GetMapping("/{id}")
     public ResponseEntity<HotelResponseDTO> getHotel(@PathVariable Long id) {

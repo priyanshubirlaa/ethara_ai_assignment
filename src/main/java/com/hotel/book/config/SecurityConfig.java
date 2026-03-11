@@ -49,7 +49,7 @@ public class SecurityConfig {
         .requestMatchers("/api/customers/**").hasAnyRole("ADMIN", "STAFF")
         .requestMatchers("/api/bookings/**").hasAnyRole("ADMIN", "STAFF")
 
-        .requestMatchers("/api/health","/swagger-ui/**", "/v3/**").permitAll()
+        .requestMatchers("/api/health","/swagger-ui/**", "/v3/**", "/actuator/**").permitAll()
         .requestMatchers("/api/auth/register").hasRole("ADMIN")
         
 

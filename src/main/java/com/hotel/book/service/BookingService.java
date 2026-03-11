@@ -24,5 +24,7 @@ public interface BookingService {
         Long hotelId,
         Pageable pageable
 );
+
+
 }
 

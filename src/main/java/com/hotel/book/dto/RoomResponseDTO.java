@@ -1,6 +1,8 @@
 package com.hotel.book.dto;
 
-public class RoomResponseDTO {
+import java.io.Serializable;
+
+public class RoomResponseDTO implements Serializable{
 
     private Long id;
     private String type;

@@ -1,24 +1,23 @@
 package com.hotel.book.controller;
 
-import lombok.RequiredArgsConstructor;
-
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.annotation.Validated;
 
 import com.hotel.book.repository.CustomerRepository;
 import com.hotel.book.repository.UserRepository;
-import com.hotel.book.entity.Customer;
-import com.hotel.book.entity.Role;
 import com.hotel.book.entity.User;
 import com.hotel.book.security.JwtUtil;
 import com.hotel.book.service.UserService;
@@ -26,10 +25,11 @@ import com.hotel.book.dto.LoginRequest;
 import com.hotel.book.dto.UserRegisterRequest;
 import com.hotel.book.dto.AuthResponse;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 
 @RestController
 @RequestMapping("/api/auth")
-@RequiredArgsConstructor
 public class AuthController {
 
     private final CustomerRepository repository;
@@ -39,52 +39,72 @@ public class AuthController {
     private final UserRepository userRepository;
     private final UserService userService;
 
-//     @PostMapping("/register")
-//     public AuthResponse register(@RequestBody RegisterRequest request) {
+    private final Counter authSuccessCounter;
+    private final Counter authFailureCounter;
 
-//         Customer customer = Customer.builder()
-//                 .name(request.getName())
-//                 .email(request.getEmail())
-//                 .phone(request.getPhone())
-//                 .password(passwordEncoder.encode(request.getPassword()))
-//                 .role(Role.CUSTOMER)
-//                 .build();
+    public AuthController(
+            CustomerRepository repository,
+            PasswordEncoder passwordEncoder,
+            AuthenticationManager authManager,
+            JwtUtil jwtUtil,
+            UserRepository userRepository,
+            UserService userService,
+            MeterRegistry meterRegistry) {
 
-//         repository.save(customer);
+        this.repository = repository;
+        this.passwordEncoder = passwordEncoder;
+        this.authManager = authManager;
+        this.jwtUtil = jwtUtil;
+        this.userRepository = userRepository;
+        this.userService = userService;
 
-//         String token = jwtUtil.generateToken(customer.getEmail(),
-//                 customer.getRole().name());
+        this.authSuccessCounter =
+                meterRegistry.counter("auth.success.count");
 
-//         return new AuthResponse(token, customer.getRole().name());
-//     }
+        this.authFailureCounter =
+                meterRegistry.counter("auth.failure.count");
+    }
 
-@PostMapping("/register")
-@PreAuthorize("hasRole('ADMIN')")
-public ResponseEntity<String> register(@Validated @RequestBody UserRegisterRequest request) {
+    @PostMapping("/register")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> register(
+            @Validated @RequestBody UserRegisterRequest request) {
 
-    userService.registerUser(request);
-    return ResponseEntity.status(HttpStatus.CREATED)
-            .body("User created successfully");
-}
+        userService.registerUser(request);
 
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body("User created successfully");
+    }
 
     @PostMapping("/login")
-public AuthResponse login(@RequestBody LoginRequest request) {
+    public AuthResponse login(@RequestBody LoginRequest request) {
 
-    authManager.authenticate(
-        new UsernamePasswordAuthenticationToken(
-            request.getEmail(),
-            request.getPassword()
-        )
-    );
+        try {
 
-    User user = userRepository.findByEmail(request.getEmail())
-            .orElseThrow(() -> new UsernameNotFoundException("Invalid credentials"));
+            authManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.getEmail(),
+                            request.getPassword()
+                    )
+            );
 
-    String token = jwtUtil.generateToken(
-            user.getEmail(),
-            user.getRole().name());
+            User user = userRepository.findByEmail(request.getEmail())
+                    .orElseThrow(() ->
+                            new UsernameNotFoundException("Invalid credentials"));
 
-    return new AuthResponse(token, user.getRole().name());
-}
+            String token = jwtUtil.generateToken(
+                    user.getEmail(),
+                    user.getRole().name());
+
+            authSuccessCounter.increment();
+
+            return new AuthResponse(token, user.getRole().name());
+
+        } catch (Exception e) {
+
+            authFailureCounter.increment();
+            throw e;
+        }
+    }
 }

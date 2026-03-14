@@ -3,6 +3,8 @@ package com.hotel.book.dto;
 import java.time.Instant;
 import java.util.Map;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import lombok.Builder;
 import lombok.Getter;
 
@@ -11,6 +13,7 @@ import lombok.Getter;
  */
 @Getter
 @Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ErrorResponse {
 
     /**
@@ -40,6 +43,7 @@ public class ErrorResponse {
 
     /**
      * Optional map of field-level validation errors.
+     * Only included when validation errors occur.
      */
     private Map<String, String> errors;
 }

@@ -7,6 +7,9 @@ public interface CustomerService {
 
     CustomerResponseDTO createCustomer(CustomerRequestDTO request);
 
+    CustomerResponseDTO createCustomerForce(CustomerRequestDTO request);
+
+
     CustomerResponseDTO getCustomerById(Long id);
 
     CustomerResponseDTO updateCustomer(Long id, CustomerRequestDTO request);

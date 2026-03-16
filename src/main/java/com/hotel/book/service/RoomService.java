@@ -16,6 +16,8 @@ public interface RoomService {
 
     RoomResponseDTO getRoomByHotelAndRoom(Long hotelId, Long roomId);
 
+    void updateRoomPrice(Long roomId, Double price);
+
     Page<RoomResponseDTO> searchRooms(
         Long hotelId,
         Double minPrice,

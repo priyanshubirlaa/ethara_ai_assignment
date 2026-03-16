@@ -18,8 +18,11 @@ import com.hotel.book.repository.HotelRepository;
 import com.hotel.book.repository.RoomRepository;
 import com.hotel.book.service.RoomService;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RoomServiceImpl implements RoomService {
@@ -74,6 +77,20 @@ public class RoomServiceImpl implements RoomService {
                 .price(room.getPrice())
                 .build();
     }
+
+    @Override
+@Transactional
+public void updateRoomPrice(Long roomId, Double price) {
+
+    Room room = roomRepository.findById(roomId)
+            .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
+
+    room.setPrice(price);
+
+    roomRepository.save(room);
+
+    log.info("Room price updated successfully: roomId={} newPrice={}", roomId, price);
+}
 
     @Override
 public Page<RoomResponseDTO> searchRooms(

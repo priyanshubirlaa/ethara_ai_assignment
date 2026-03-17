@@ -47,7 +47,7 @@ public class SecurityConfig {
 
         // STAFF & ADMIN
         .requestMatchers("/api/customers/**").hasAnyRole("ADMIN", "STAFF")
-        .requestMatchers("/api/bookings/**").hasAnyRole("ADMIN", "STAFF")
+        .requestMatchers("/api/bookings/**", "/api/reviews/**").hasAnyRole("ADMIN", "STAFF")
 
         .requestMatchers("/api/health","/swagger-ui/**", "/v3/**", "/actuator/**").permitAll()
         .requestMatchers("/api/auth/register").hasRole("ADMIN")

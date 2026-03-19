@@ -51,9 +51,20 @@ public class HotelController {
         return ResponseEntity.ok(hotelService.getHotels(city, pageable));
     }
 
+    @GetMapping("/available")
+    public ResponseEntity<PageResponse<HotelResponseDTO>> getAvailableHotels(
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate checkIn,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate checkOut,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(hotelService.searchAvailableHotels(city, checkIn, checkOut, pageable));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<HotelResponseDTO> getHotel(@PathVariable Long id) {
         return ResponseEntity.ok(hotelService.getHotelById(id));
     }
 }
-

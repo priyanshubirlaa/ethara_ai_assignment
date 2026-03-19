@@ -19,12 +19,14 @@ public interface BookingService {
     Page<BookingResponseDTO> getBookingsByStatus(BookingStatus status, Pageable pageable);
 
     Page<BookingResponseDTO> searchBookings(
-        BookingStatus status,
-        Long customerId,
-        Long hotelId,
-        Pageable pageable
-);
+            BookingStatus status,
+            Long customerId,
+            Long hotelId,
+            Pageable pageable
+    );
 
-
+    /**
+     * Update the status of an existing booking in the simplified lifecycle.
+     */
+    BookingResponseDTO updateStatus(Long id, BookingStatus newStatus);
 }
-

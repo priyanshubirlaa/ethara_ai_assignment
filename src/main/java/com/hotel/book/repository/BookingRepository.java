@@ -29,7 +29,20 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     //Page<Booking> findByStatus(BookingStatus status, Pageable pageable);
 
-Page<Booking> findByCustomerId(Long customerId, Pageable pageable);
+    Page<Booking> findByCustomerId(Long customerId, Pageable pageable);
 
-Page<Booking> findByHotelId(Long hotelId, Pageable pageable);
+    Page<Booking> findByHotelId(Long hotelId, Pageable pageable);
+
+    @Query("""
+        SELECT COUNT(DISTINCT b.room.id) FROM Booking b
+        WHERE b.hotel.id = :hotelId
+        AND b.status = 'CONFIRMED'
+        AND b.checkInDate < :checkOutDate
+        AND b.checkOutDate > :checkInDate
+    """)
+    long countBookedRoomsForHotel(
+            @Param("hotelId") Long hotelId,
+            @Param("checkInDate") LocalDate checkInDate,
+            @Param("checkOutDate") LocalDate checkOutDate
+    );
 }

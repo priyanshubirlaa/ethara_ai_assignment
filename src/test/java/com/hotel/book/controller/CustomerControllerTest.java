@@ -10,19 +10,24 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(controllers = CustomerController.class)
+@WebMvcTest(controllers = CustomerController.class,
+        excludeAutoConfiguration = {
+                SecurityAutoConfiguration.class,
+                SecurityFilterAutoConfiguration.class
+        })
 class CustomerControllerTest {
 
     @Autowired
@@ -42,7 +47,6 @@ class CustomerControllerTest {
 
     @BeforeEach
     void setUp() {
-
         customerRequestDTO = new CustomerRequestDTO();
         customerRequestDTO.setName("John Doe");
         customerRequestDTO.setEmail("john.doe@example.com");
@@ -57,11 +61,9 @@ class CustomerControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(roles = {"STAFF", "ADMIN"})
     void testCreateCustomer_Success() throws Exception {
-
-        when(customerService.createCustomer(any(CustomerRequestDTO.class)))
-                .thenReturn(customerResponseDTO);
+        when(customerService.createCustomer(any(CustomerRequestDTO.class))).thenReturn(customerResponseDTO);
 
         mockMvc.perform(post("/api/customers")
                         .with(csrf())
@@ -69,25 +71,51 @@ class CustomerControllerTest {
                         .content(objectMapper.writeValueAsString(customerRequestDTO)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1L))
-                .andExpect(jsonPath("$.name").value("John Doe"));
+                .andExpect(jsonPath("$.name").value("John Doe"))
+                .andExpect(jsonPath("$.email").value("john.doe@example.com"))
+                .andExpect(jsonPath("$.phone").value("1234567890"));
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
-    void testGetCustomer_Success() throws Exception {
+    @WithMockUser(roles = {"STAFF", "ADMIN"})
+    void testCreateCustomer_ValidationError_EmptyName() throws Exception {
+        customerRequestDTO.setName(""); // Invalid: empty name
 
-        when(customerService.getCustomerById(1L))
-                .thenReturn(customerResponseDTO);
+        mockMvc.perform(post("/api/customers")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(customerRequestDTO)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.name").exists());
+    }
+
+    @Test
+    @WithMockUser(roles = {"STAFF", "ADMIN"})
+    void testCreateCustomer_ValidationError_InvalidEmail() throws Exception {
+        customerRequestDTO.setEmail("invalid-email"); // Invalid: not a valid email
+
+        mockMvc.perform(post("/api/customers")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(customerRequestDTO)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.email").exists());
+    }
+
+    @Test
+    @WithMockUser(roles = {"STAFF", "ADMIN"})
+    void testGetCustomer_Success() throws Exception {
+        when(customerService.getCustomerById(1L)).thenReturn(customerResponseDTO);
 
         mockMvc.perform(get("/api/customers/1"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1L))
                 .andExpect(jsonPath("$.name").value("John Doe"));
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(roles = {"STAFF", "ADMIN"})
     void testGetCustomer_NotFound() throws Exception {
-
         when(customerService.getCustomerById(999L))
                 .thenThrow(new ResourceNotFoundException("Customer not found"));
 
@@ -97,8 +125,47 @@ class CustomerControllerTest {
     }
 
     @Test
-    void testCreateCustomer_Unauthenticated() throws Exception {
+    @WithMockUser(roles = {"STAFF", "ADMIN"})
+    void testUpdateCustomer_Success() throws Exception {
+        CustomerResponseDTO updatedResponse = CustomerResponseDTO.builder()
+                .id(1L)
+                .name("Jane Doe")
+                .email("jane.doe@example.com")
+                .phone("9876543210")
+                .build();
 
+        when(customerService.updateCustomer(eq(1L), any(CustomerRequestDTO.class)))
+                .thenReturn(updatedResponse);
+
+        customerRequestDTO.setName("Jane Doe");
+        customerRequestDTO.setEmail("jane.doe@example.com");
+        customerRequestDTO.setPhone("9876543210");
+
+        mockMvc.perform(put("/api/customers/1")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(customerRequestDTO)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Jane Doe"))
+                .andExpect(jsonPath("$.email").value("jane.doe@example.com"));
+    }
+
+    @Test
+    @WithMockUser(roles = {"STAFF", "ADMIN"})
+    void testUpdateCustomer_NotFound() throws Exception {
+        when(customerService.updateCustomer(eq(999L), any(CustomerRequestDTO.class)))
+                .thenThrow(new ResourceNotFoundException("Customer not found"));
+
+        mockMvc.perform(put("/api/customers/999")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(customerRequestDTO)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Customer not found"));
+    }
+
+    @Test
+    void testCreateCustomer_Unauthenticated() throws Exception {
         mockMvc.perform(post("/api/customers")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)

@@ -15,6 +15,7 @@ import com.hotel.book.entity.*;
 import com.hotel.book.exception.BusinessException;
 import com.hotel.book.exception.ResourceNotFoundException;
 import com.hotel.book.repository.*;
+import com.hotel.book.service.AuditLogService;
 import com.hotel.book.service.BookingService;
 import com.hotel.book.service.EmailService;
 
@@ -31,6 +32,7 @@ public class BookingServiceImpl implements BookingService {
     private final CustomerRepository customerRepository;
     private final HotelRepository hotelRepository;
     private final RoomRepository roomRepository;
+    private final AuditLogService auditLogService;
     private final EmailService emailService;
 
     private final Counter bookingSuccessCounter;
@@ -41,6 +43,7 @@ public class BookingServiceImpl implements BookingService {
             CustomerRepository customerRepository,
             HotelRepository hotelRepository,
             RoomRepository roomRepository,
+            AuditLogService auditLogService,
             EmailService emailService,
             MeterRegistry meterRegistry) {
 
@@ -48,6 +51,7 @@ public class BookingServiceImpl implements BookingService {
         this.customerRepository = customerRepository;
         this.hotelRepository = hotelRepository;
         this.roomRepository = roomRepository;
+        this.auditLogService = auditLogService;
         this.emailService = emailService;
 
         this.bookingSuccessCounter =
@@ -98,25 +102,35 @@ public class BookingServiceImpl implements BookingService {
             booking.setRoom(room);
             booking.setCheckInDate(request.getCheckInDate());
             booking.setCheckOutDate(request.getCheckOutDate());
+            // New bookings start as confirmed in the simplified lifecycle.
             booking.setStatus(BookingStatus.CONFIRMED);
 
             Booking saved = bookingRepository.save(booking);
 
-            bookingSuccessCounter.increment();
-
-            try {emailService.sendBookingConfirmation(
-                    customer.getEmail(),
-                    hotel.getName(),
-                    room.getType(),
-                    saved.getCheckInDate().toString(),
-                    saved.getCheckOutDate().toString()
-            );}
-            catch (Exception ex) {
+            try {
+                emailService.sendBookingConfirmation(
+                        customer.getEmail(),
+                        hotel.getName(),
+                        room.getType().getDisplayName(),
+                        saved.getCheckInDate().toString(),
+                        saved.getCheckOutDate().toString()
+                );
+            } catch (Exception ex) {
                 log.error("Email sending failed for bookingId={}", saved.getId(), ex);
             }
 
-            MDC.put("status", "201");
+            bookingSuccessCounter.increment();
 
+            auditLogService.log(
+                    "BOOKING_CREATED",
+                    "BOOKING",
+                    saved.getId(),
+                    "Booking created for customerId=" + customer.getId()
+                            + ", hotelId=" + hotel.getId()
+                            + ", roomId=" + room.getId()
+            );
+
+            MDC.put("status", "201");
             log.info("Booking created successfully: bookingId={} customerId={} hotelId={} roomId={}",
                     saved.getId(),
                     customer.getId(),
@@ -129,9 +143,6 @@ public class BookingServiceImpl implements BookingService {
 
             bookingFailureCounter.increment();
             throw e;
-
-        } finally {
-            MDC.clear();
         }
     }
 
@@ -145,44 +156,75 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-@Transactional
-public BookingResponseDTO cancelBooking(Long id) {
+    @Transactional
+    public BookingResponseDTO cancelBooking(Long id) {
 
-    Booking booking = bookingRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
 
-    booking.setStatus(BookingStatus.CANCELLED);
+        try {
+            Thread.sleep(10000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
-    Booking saved = bookingRepository.save(booking);
+        booking.setStatus(BookingStatus.CANCELLED);
+        Booking saved = bookingRepository.save(booking);
 
-    Customer customer = saved.getCustomer();
-    Hotel hotel = saved.getHotel();
-    Room room = saved.getRoom();
+        try {
+            emailService.sendBookingCancellation(
+                    saved.getCustomer().getEmail(),
+                    saved.getHotel().getName(),
+                    saved.getRoom().getType().getDisplayName(),
+                    saved.getCheckInDate().toString(),
+                    saved.getCheckOutDate().toString()
+            );
+        } catch (Exception ex) {
+            log.error("Email sending failed for bookingId={}", saved.getId(), ex);
+        }
 
-    MDC.put("status", "200");
+        MDC.put("status", "200");
+        log.info("Booking cancelled successfully: bookingId={} customerId={} hotelId={} roomId={}",
+                saved.getId(),
+                saved.getCustomer().getId(),
+                saved.getHotel().getId(),
+                saved.getRoom().getId());
 
-    try {
-        emailService.sendBookingCancellation(
-                customer.getEmail(),
-                hotel.getName(),
-                room.getType(),
-                saved.getCheckInDate().toString(),
-                saved.getCheckOutDate().toString()
+        auditLogService.log(
+                "BOOKING_CANCELLED",
+                "BOOKING",
+                saved.getId(),
+                "Booking cancelled for customerId=" + saved.getCustomer().getId()
+                        + ", hotelId=" + saved.getHotel().getId()
+                        + ", roomId=" + saved.getRoom().getId()
         );
-    } catch (Exception ex) {
-        log.error("Email sending failed for bookingId={}", saved.getId(), ex);
+
+        return mapToResponse(saved);
     }
 
-    log.info("Booking cancelled successfully: bookingId={} customerId={} hotelId={} roomId={}",
-            saved.getId(),
-            customer.getId(),
-            hotel.getId(),
-            room.getId());
+    @Override
+    @Transactional
+    public BookingResponseDTO updateStatus(Long id, BookingStatus newStatus) {
 
-    MDC.clear();
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
 
-    return mapToResponse(saved);
-}
+        booking.setStatus(newStatus);
+        Booking saved = bookingRepository.save(booking);
+
+        MDC.put("status", "200");
+        log.info("Booking status updated: bookingId={} newStatus={}",
+                saved.getId(), saved.getStatus());
+
+        auditLogService.log(
+                "BOOKING_STATUS_UPDATED",
+                "BOOKING",
+                saved.getId(),
+                "Status changed to " + saved.getStatus()
+        );
+
+        return mapToResponse(saved);
+    }
 
     @Override
     public Page<BookingResponseDTO> getBookingsByStatus(
@@ -224,7 +266,7 @@ public BookingResponseDTO cancelBooking(Long id) {
                 .bookingId(booking.getId())
                 .customerName(booking.getCustomer().getName())
                 .hotelName(booking.getHotel().getName())
-                .roomType(booking.getRoom().getType())
+                .roomType(booking.getRoom().getType().getDisplayName())
                 .status(booking.getStatus())
                 .checkInDate(booking.getCheckInDate())
                 .checkOutDate(booking.getCheckOutDate())

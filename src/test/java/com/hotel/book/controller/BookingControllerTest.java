@@ -12,6 +12,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -31,7 +33,11 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(controllers = BookingController.class)
+@WebMvcTest(controllers = BookingController.class,
+        excludeAutoConfiguration = {
+                SecurityAutoConfiguration.class,
+                SecurityFilterAutoConfiguration.class
+        })
 class BookingControllerTest {
 
     @Autowired
@@ -51,7 +57,6 @@ class BookingControllerTest {
 
     @BeforeEach
     void setUp() {
-
         bookingRequestDTO = new BookingRequestDTO();
         bookingRequestDTO.setCustomerId(1L);
         bookingRequestDTO.setHotelId(1L);
@@ -71,11 +76,9 @@ class BookingControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(roles = {"STAFF", "ADMIN"})
     void testCreateBooking_Success() throws Exception {
-
-        when(bookingService.createBooking(any(BookingRequestDTO.class)))
-                .thenReturn(bookingResponseDTO);
+        when(bookingService.createBooking(any(BookingRequestDTO.class))).thenReturn(bookingResponseDTO);
 
         mockMvc.perform(post("/api/bookings")
                         .with(csrf())
@@ -88,10 +91,9 @@ class BookingControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(roles = {"STAFF", "ADMIN"})
     void testCreateBooking_ValidationError() throws Exception {
-
-        bookingRequestDTO.setCheckInDate(null);
+        bookingRequestDTO.setCheckInDate(null); // Invalid: null check-in date
 
         mockMvc.perform(post("/api/bookings")
                         .with(csrf())
@@ -101,9 +103,8 @@ class BookingControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(roles = {"STAFF", "ADMIN"})
     void testCreateBooking_BusinessException() throws Exception {
-
         when(bookingService.createBooking(any(BookingRequestDTO.class)))
                 .thenThrow(new BusinessException("Check-out date must be after check-in date"));
 
@@ -112,14 +113,12 @@ class BookingControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(bookingRequestDTO)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message")
-                        .value("Check-out date must be after check-in date"));
+                .andExpect(jsonPath("$.message").value("Check-out date must be after check-in date"));
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(roles = {"STAFF", "ADMIN"})
     void testGetBooking_Success() throws Exception {
-
         when(bookingService.getBookingById(1L)).thenReturn(bookingResponseDTO);
 
         mockMvc.perform(get("/api/bookings/1"))
@@ -129,9 +128,8 @@ class BookingControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(roles = {"STAFF", "ADMIN"})
     void testGetBooking_NotFound() throws Exception {
-
         when(bookingService.getBookingById(999L))
                 .thenThrow(new ResourceNotFoundException("Booking not found"));
 
@@ -141,9 +139,8 @@ class BookingControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(roles = {"STAFF", "ADMIN"})
     void testCancelBooking_Success() throws Exception {
-
         BookingResponseDTO cancelledBooking = BookingResponseDTO.builder()
                 .bookingId(1L)
                 .status(BookingStatus.CANCELLED)
@@ -158,12 +155,10 @@ class BookingControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(roles = {"STAFF", "ADMIN"})
     void testGetBookingsByStatus_Success() throws Exception {
-
         List<BookingResponseDTO> bookings = Arrays.asList(bookingResponseDTO);
-        Page<BookingResponseDTO> page =
-                new PageImpl<>(bookings, PageRequest.of(0, 10), 1);
+        Page<BookingResponseDTO> page = new PageImpl<>(bookings, PageRequest.of(0, 10), 1L);
 
         when(bookingService.getBookingsByStatus(eq(BookingStatus.CONFIRMED), any(Pageable.class)))
                 .thenReturn(page);
@@ -177,12 +172,20 @@ class BookingControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
-    void testSearchBookings_Success() throws Exception {
+    @WithMockUser(roles = {"STAFF", "ADMIN"})
+    void testGetBookingsByStatus_InvalidStatus() throws Exception {
+        mockMvc.perform(get("/api/bookings/status/INVALID")
+                        .param("page", "0")
+                        .param("size", "10"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Invalid booking status")));
+    }
 
+    @Test
+    @WithMockUser(roles = {"STAFF", "ADMIN"})
+    void testSearchBookings_Success() throws Exception {
         List<BookingResponseDTO> bookings = Arrays.asList(bookingResponseDTO);
-        Page<BookingResponseDTO> page =
-                new PageImpl<>(bookings, PageRequest.of(0, 10), 1);
+        Page<BookingResponseDTO> page = new PageImpl<>(bookings, PageRequest.of(0, 10), 1L);
 
         when(bookingService.searchBookings(any(), any(), any(), any(Pageable.class)))
                 .thenReturn(page);
@@ -197,7 +200,6 @@ class BookingControllerTest {
 
     @Test
     void testCreateBooking_Unauthenticated() throws Exception {
-
         mockMvc.perform(post("/api/bookings")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)

@@ -47,6 +47,13 @@ public class BookingController {
         return ResponseEntity.ok(bookingService.cancelBooking(id));
     }
 
+    // Additional lifecycle endpoints (do not change existing APIs)
+
+    @PutMapping("/{id}/confirm")
+    public ResponseEntity<BookingResponseDTO> confirmBooking(@PathVariable Long id) {
+        return ResponseEntity.ok(bookingService.updateStatus(id, BookingStatus.CONFIRMED));
+    }
+
     @GetMapping("/status/{status}")
     public ResponseEntity<Page<BookingResponseDTO>> getBookingsByStatus(
             @PathVariable String status,
@@ -84,4 +91,3 @@ public ResponseEntity<Page<BookingResponseDTO>> searchBookings(
     );
 }
 }
-

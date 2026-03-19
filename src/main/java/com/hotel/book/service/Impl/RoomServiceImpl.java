@@ -13,9 +13,13 @@ import com.hotel.book.dto.RoomRequestDTO;
 import com.hotel.book.dto.RoomResponseDTO;
 import com.hotel.book.entity.Hotel;
 import com.hotel.book.entity.Room;
+import com.hotel.book.entity.RoomType;
 import com.hotel.book.exception.ResourceNotFoundException;
 import com.hotel.book.repository.HotelRepository;
 import com.hotel.book.repository.RoomRepository;
+import com.hotel.book.repository.BookingRepository;
+import com.hotel.book.service.AuditLogService;
+import com.hotel.book.service.PricingService;
 import com.hotel.book.service.RoomService;
 
 import jakarta.transaction.Transactional;
@@ -29,6 +33,9 @@ public class RoomServiceImpl implements RoomService {
 
     private final RoomRepository roomRepository;
     private final HotelRepository hotelRepository;
+    private final AuditLogService auditLogService;
+    private final BookingRepository bookingRepository;
+    private final PricingService pricingService;
 
     @CacheEvict(value = "rooms", key = "#hotelId + '-' + #pageable.pageNumber", allEntries = true)
     @Override
@@ -38,12 +45,27 @@ public class RoomServiceImpl implements RoomService {
                 .orElseThrow(() -> new ResourceNotFoundException("Hotel not found"));
 
         Room room = new Room();
-        room.setType(request.getType());
+
+        RoomType roomType = RoomType.fromDisplayName(request.getType());
+        if (roomType == null) {
+            throw new com.hotel.book.exception.BusinessException(
+                    "Invalid room type. Allowed values are: Standard Room, Superior Room, Deluxe Room, Executive Suite");
+        }
+        room.setType(roomType);
         room.setPrice(request.getPrice());
         room.setHotel(hotel);
 
         Room saved = roomRepository.save(room);
-        return mapToResponse(saved);
+        RoomResponseDTO response = mapToResponse(saved);
+
+        auditLogService.log(
+                "ROOM_PRICE_UPDATED",
+                "ROOM",
+                saved.getId(),
+                "Room created/updated with price=" + saved.getPrice()
+        );
+
+        return response;
     }
 
     @Cacheable(value = "rooms", key = "#hotelId + '-' + #pageable.pageNumber")
@@ -55,7 +77,8 @@ public class RoomServiceImpl implements RoomService {
         }
     
         Page<Room> roomsPage = roomRepository.findByHotelId(hotelId, pageable);
-    
+
+        // No date range here, so we keep base price (no dynamic adjustment)
         return roomsPage.map(this::mapToResponse);
     }
 
@@ -73,7 +96,7 @@ public class RoomServiceImpl implements RoomService {
     private RoomResponseDTO mapToResponse(Room room) {
         return RoomResponseDTO.builder()
                 .id(room.getId())
-                .type(room.getType())
+                .type(room.getType().getDisplayName())
                 .price(room.getPrice())
                 .build();
     }
@@ -93,31 +116,47 @@ public void updateRoomPrice(Long roomId, Double price) {
 }
 
     @Override
-public Page<RoomResponseDTO> searchRooms(
-        Long hotelId,
-        Double minPrice,
-        Double maxPrice,
-        LocalDate checkIn,
-        LocalDate checkOut,
-        Pageable pageable) {
+    public Page<RoomResponseDTO> searchRooms(
+            Long hotelId,
+            Double minPrice,
+            Double maxPrice,
+            LocalDate checkIn,
+            LocalDate checkOut,
+            Pageable pageable) {
 
-    if (!hotelRepository.existsById(hotelId)) {
-        throw new ResourceNotFoundException("Hotel not found");
+        if (!hotelRepository.existsById(hotelId)) {
+            throw new ResourceNotFoundException("Hotel not found");
+        }
+
+        Page<Room> page;
+
+        if (checkIn != null && checkOut != null) {
+            page = roomRepository.findAvailableRooms(hotelId, checkIn, checkOut, pageable);
+        } else if (minPrice != null && maxPrice != null) {
+            page = roomRepository.findByHotelIdAndPriceBetween(
+                    hotelId, minPrice, maxPrice, pageable);
+        } else {
+            page = roomRepository.findByHotelId(hotelId, pageable);
+        }
+
+        // Apply dynamic pricing only when a date range is provided
+        if (checkIn != null && checkOut != null) {
+            long totalRooms = roomRepository.countByHotelId(hotelId);
+            long bookedRooms = bookingRepository.countBookedRoomsForHotel(hotelId, checkIn, checkOut);
+            double occupancyRate = (totalRooms > 0) ? (double) bookedRooms / totalRooms : 0.0;
+
+            return page.map(room -> {
+                double adjustedPrice = pricingService.applyDynamicPricing(
+                        room.getPrice(), occupancyRate);
+                return RoomResponseDTO.builder()
+                        .id(room.getId())
+                        .type(room.getType().getDisplayName())
+                        .price(adjustedPrice)
+                        .build();
+            });
+        }
+
+        // No date range: return base price
+        return page.map(this::mapToResponse);
     }
-
-    Page<Room> page;
-
-    if (checkIn != null && checkOut != null) {
-        page = roomRepository.findAvailableRooms(hotelId, checkIn, checkOut, pageable);
-
-    } else if (minPrice != null && maxPrice != null) {
-        page = roomRepository.findByHotelIdAndPriceBetween(
-                hotelId, minPrice, maxPrice, pageable);
-
-    } else {
-        page = roomRepository.findByHotelId(hotelId, pageable);
-    }
-
-    return page.map(this::mapToResponse);
-}
 }

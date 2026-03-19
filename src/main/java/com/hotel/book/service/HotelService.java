@@ -13,5 +13,11 @@ public interface HotelService {
     HotelResponseDTO getHotelById(Long id);
 
     PageResponse<HotelResponseDTO> getHotels(String city, Pageable pageable);
+
+    PageResponse<HotelResponseDTO> searchAvailableHotels(
+            String city,
+            java.time.LocalDate checkIn,
+            java.time.LocalDate checkOut,
+            Pageable pageable);
 }
 

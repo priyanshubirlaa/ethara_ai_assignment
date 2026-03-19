@@ -40,4 +40,6 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     );
 
     Optional<Room> findByIdAndHotelId(Long roomId, Long hotelId);
+
+    long countByHotelId(Long hotelId);
 }

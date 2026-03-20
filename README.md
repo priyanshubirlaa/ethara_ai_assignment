@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-
-=======
 # Hotel Booking System
 
 A production-oriented backend REST API built with Spring Boot for managing hotels, rooms, bookings, reviews, authentication, observability, caching, and operational safeguards.
@@ -348,4 +345,4 @@ http://localhost:8080/actuator/prometheus
 ## Repository
 
 https://github.com/priyanshubirlaa/Hotel_Booking_System
->>>>>>> 8b48ec8 (updated readme file)
+

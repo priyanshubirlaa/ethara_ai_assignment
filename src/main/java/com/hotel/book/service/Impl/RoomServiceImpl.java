@@ -13,6 +13,7 @@ import com.hotel.book.dto.RoomResponseDTO;
 import com.hotel.book.entity.Hotel;
 import com.hotel.book.entity.Room;
 import com.hotel.book.entity.RoomType;
+import com.hotel.book.exception.BusinessException;
 import com.hotel.book.exception.ResourceNotFoundException;
 import com.hotel.book.repository.HotelRepository;
 import com.hotel.book.repository.RoomRepository;
@@ -127,16 +128,13 @@ public void updateRoomPrice(Long roomId, Double price) {
             throw new ResourceNotFoundException("Hotel not found");
         }
 
-        Page<Room> page;
-
-        if (checkIn != null && checkOut != null) {
-            page = roomRepository.findAvailableRooms(hotelId, checkIn, checkOut, pageable);
-        } else if (minPrice != null && maxPrice != null) {
-            page = roomRepository.findByHotelIdAndPriceBetween(
-                    hotelId, minPrice, maxPrice, pageable);
-        } else {
-            page = roomRepository.findByHotelId(hotelId, pageable);
+        if ((checkIn == null) != (checkOut == null)) {
+            throw new BusinessException("Both checkIn and checkOut are required together");
         }
+
+        Page<Room> page = roomRepository.searchRooms(
+                hotelId, minPrice, maxPrice, checkIn, checkOut, pageable);
+
         return page.map(this::mapToResponse);
     }
 

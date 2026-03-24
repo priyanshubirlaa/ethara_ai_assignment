@@ -25,6 +25,30 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     @Query("""
         SELECT r FROM Room r
         WHERE r.hotel.id = :hotelId
+        AND (:minPrice IS NULL OR r.price >= :minPrice)
+        AND (:maxPrice IS NULL OR r.price <= :maxPrice)
+        AND (
+            :checkIn IS NULL OR :checkOut IS NULL OR NOT EXISTS (
+                SELECT 1 FROM Booking b
+                WHERE b.room.id = r.id
+                AND b.status = 'CONFIRMED'
+                AND b.checkInDate < :checkOut
+                AND b.checkOutDate > :checkIn
+            )
+        )
+    """)
+    Page<Room> searchRooms(
+            @Param("hotelId") Long hotelId,
+            @Param("minPrice") Double minPrice,
+            @Param("maxPrice") Double maxPrice,
+            @Param("checkIn") LocalDate checkIn,
+            @Param("checkOut") LocalDate checkOut,
+            Pageable pageable
+    );
+
+    @Query("""
+        SELECT r FROM Room r
+        WHERE r.hotel.id = :hotelId
         AND r.id NOT IN (
             SELECT b.room.id FROM Booking b
             WHERE b.status = 'CONFIRMED'

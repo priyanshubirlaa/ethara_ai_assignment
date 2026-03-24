@@ -3,6 +3,7 @@ package com.hotel.book.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hotel.book.dto.RoomRequestDTO;
 import com.hotel.book.dto.RoomResponseDTO;
+import com.hotel.book.exception.BusinessException;
 import com.hotel.book.exception.ResourceNotFoundException;
 import com.hotel.book.security.JwtFilter;
 import com.hotel.book.service.RoomService;
@@ -22,6 +23,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Arrays;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -160,6 +162,46 @@ class RoomControllerTest {
                         .param("size", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testSearchRooms_WithPriceAndAvailabilityFilters() throws Exception {
+        List<RoomResponseDTO> rooms = Arrays.asList(roomResponseDTO);
+        Page<RoomResponseDTO> page = new PageImpl<>(rooms, PageRequest.of(0, 10), 1L);
+
+        when(roomService.searchRooms(
+                eq(1L),
+                eq(500.0),
+                eq(2000.0),
+                eq(LocalDate.parse("2026-06-20")),
+                eq(LocalDate.parse("2026-06-22")),
+                any(Pageable.class)
+        )).thenReturn(page);
+
+        mockMvc.perform(get("/api/hotels/1/rooms")
+                        .param("minPrice", "500")
+                        .param("maxPrice", "2000")
+                        .param("checkIn", "2026-06-20")
+                        .param("checkOut", "2026-06-22")
+                        .param("page", "0")
+                        .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testSearchRooms_WithOnlyOneDate_ReturnsBadRequest() throws Exception {
+        when(roomService.searchRooms(anyLong(), any(), any(), any(), any(), any(Pageable.class)))
+                .thenThrow(new BusinessException("Both checkIn and checkOut are required together"));
+
+        mockMvc.perform(get("/api/hotels/1/rooms")
+                        .param("checkIn", "2026-06-20")
+                        .param("page", "0")
+                        .param("size", "10"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Both checkIn and checkOut are required together"));
     }
 
     @Test

@@ -22,11 +22,13 @@ import com.hotel.book.entity.BookingStatus;
 import com.hotel.book.exception.BusinessException;
 import com.hotel.book.service.BookingService;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/bookings")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 public class BookingController {
 
     private final BookingService bookingService;

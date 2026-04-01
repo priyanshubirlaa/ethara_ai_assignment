@@ -15,12 +15,14 @@ import com.hotel.book.entity.HotelReview;
 import com.hotel.book.service.GeminiService;
 import com.hotel.book.service.ReviewService;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/reviews")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 public class ReviewController {
 
     private final ReviewService reviewService;

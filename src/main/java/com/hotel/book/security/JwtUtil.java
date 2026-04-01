@@ -15,7 +15,7 @@ import java.util.Date;
 @Component
 public class JwtUtil {
 
-    // ⚠️ In production move this to application.properties
+    
     private static final String SECRET =
             "thisisaverysecuresecretkeythisisaverysecuresecretkey";
 
@@ -25,9 +25,7 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(SECRET.getBytes());
     }
 
-    // =========================
-    // Generate Token
-    // =========================
+  
     public String generateToken(String email, String role) {
 
         return Jwts.builder()
@@ -39,23 +37,17 @@ public class JwtUtil {
                 .compact();
     }
 
-    // =========================
-    // Extract Email
-    // =========================
+   
     public String extractEmail(String token) {
         return extractAllClaims(token).getSubject();
     }
 
-    // =========================
-    // Extract Role (Optional)
-    // =========================
+   
     public String extractRole(String token) {
         return extractAllClaims(token).get("role", String.class);
     }
 
-    // =========================
-    // Extract Claims (Core Method)
-    // =========================
+   
     private Claims extractAllClaims(String token) {
 
         return Jwts.parserBuilder()
@@ -65,9 +57,8 @@ public class JwtUtil {
                 .getBody();
     }
 
-    // =========================
-    // Validate Token (Throw AuthenticationExceptions)
-    // =========================
+    
+
     public void validateToken(String token) {
 
         try {
@@ -78,7 +69,7 @@ public class JwtUtil {
                     .parseClaimsJws(token);
 
         } catch (ExpiredJwtException ex) {
-            // Will be translated by Spring Security into a 401 via AuthenticationEntryPoint
+
             throw new JwtAuthenticationException("JWT token expired", ex);
 
         } catch (JwtException | IllegalArgumentException ex) {

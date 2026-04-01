@@ -24,11 +24,13 @@ import com.hotel.book.dto.RoomRequestDTO;
 import com.hotel.book.dto.RoomResponseDTO;
 import com.hotel.book.service.RoomService;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/hotels/{hotelId}/rooms")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 public class RoomController {
 
     private final RoomService roomService;

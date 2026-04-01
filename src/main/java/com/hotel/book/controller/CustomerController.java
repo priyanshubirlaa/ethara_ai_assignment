@@ -14,11 +14,13 @@ import com.hotel.book.entity.Customer;
 import com.hotel.book.repository.CustomerRepository;
 import com.hotel.book.service.CustomerService;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/customers")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 public class CustomerController {
 
     private final CustomerService customerService;

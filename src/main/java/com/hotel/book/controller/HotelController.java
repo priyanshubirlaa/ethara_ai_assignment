@@ -19,11 +19,13 @@ import com.hotel.book.dto.HotelResponseDTO;
 import com.hotel.book.dto.PageResponse;
 import com.hotel.book.service.HotelService;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/hotels")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 public class HotelController {
 
     private final HotelService hotelService;

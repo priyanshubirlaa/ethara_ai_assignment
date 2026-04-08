@@ -7,11 +7,6 @@ pipeline {
     }
 
     stages {
-        stage('Clone Repository') {
-            steps {
-                git 'https://github.com/priyanshubirlaa/Hotel_Booking_System'
-            }
-        }
 
         stage('Build Project') {
             steps {
@@ -24,5 +19,6 @@ pipeline {
                 sh 'mvn test'
             }
         }
+
     }
 }

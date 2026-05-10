@@ -325,7 +325,7 @@ Prometheus metrics:
 http://localhost:8080/actuator/prometheus
 ```
 
-## Highlights
+## Backend Highlights
 
 - JWT authentication and authorization
 - Role-based API protection
@@ -342,7 +342,354 @@ http://localhost:8080/actuator/prometheus
 - Validation, filtering, sorting, and pagination
 - Swagger/OpenAPI docs
 
+- ## Frontend
+
+The project also includes a modern React-based frontend for interacting with the Hotel Booking System backend APIs. The frontend provides a dashboard-driven experience for authentication, hotel search, room browsing, customer management, booking creation, and booking lifecycle management.
+
+The frontend is built with React + Vite and communicates with the Spring Boot backend through REST APIs using a centralized API layer.
+
+### Frontend Tech Stack
+
+- React 18
+- Vite
+- JavaScript (ES6+)
+- Tailwind CSS
+- Lucide React Icons
+- Fetch API
+- Local Storage
+- React Hooks
+
+### Frontend Architecture
+
+The frontend follows a component-based architecture using React functional components and hooks.
+
+Main structure:
+
+`UI Components -> API Service Layer -> Spring Boot REST APIs`
+
+The frontend consists of:
+
+- Reusable UI components for forms, buttons, metrics, and empty states
+- Centralized API request handling
+- JWT-based authentication flow
+- Local storage-based session persistence
+- Dynamic dashboard rendering
+- State management using React hooks
+- Backend communication through REST APIs
+
+### Frontend Features
+
+### Authentication and Authorization
+
+The frontend supports:
+
+- Login using email and password
+- Signup with role selection
+- JWT token storage in browser local storage
+- Automatic authentication header injection
+- Role-based UI rendering
+- Logout functionality
+- Session persistence across refresh
+
+JWT token is stored locally:
+
+```text
+hotel_token
+```
+
+Current role storage:
+
+```text
+hotel_role
+```
+
+Authorization header format:
+
+```http
+Authorization: Bearer <jwt-token>
+```
+
+### API Integration Layer
+
+A centralized API utility is implemented to standardize backend communication.
+
+Features of the API layer include:
+
+- Automatic `Content-Type: application/json`
+- JWT token injection for protected APIs
+- Public API handling through `auth: false`
+- Centralized API error handling
+- Response parsing for JSON and text responses
+- Standardized exception handling
+- Field-level validation error formatting
+- Pagination helper methods
+
+The API utility handles:
+
+- Success responses
+- Validation failures
+- HTTP status-based errors
+- Backend connectivity issues
+- Unauthorized session handling
+
+Example API request flow:
+
+```javascript
+apiRequest("/auth/login", {
+  method: "POST",
+  body: JSON.stringify(login),
+  auth: false,
+});
+```
+
+### Dashboard Features
+
+The frontend dashboard provides:
+
+#### Authentication Dashboard
+
+- Login screen
+- Signup screen
+- Role selection (`ADMIN`, `STAFF`)
+- Error and success notification handling
+
+#### Hotel Search
+
+Allows users to:
+
+- Search hotels by city
+- Filter hotels by check-in date
+- Filter hotels by check-out date
+- View hotel availability
+- Display hotel cards dynamically
+
+Example search:
+
+```http
+GET /api/hotels/available?city=Delhi&checkIn=2026-03-25&checkOut=2026-03-28&page=0&size=12
+```
+
+#### Room Search and Filtering
+
+Users can:
+
+- View rooms for selected hotels
+- Filter rooms by price range
+- Filter by check-in/check-out dates
+- Sort rooms by price
+- Select rooms directly for booking
+
+Room filtering example:
+
+```http
+GET /api/hotels/{hotelId}/rooms?minPrice=1000&maxPrice=5000&page=0&size=10&sortBy=price&sortDir=asc
+```
+
+#### Customer Management
+
+The dashboard supports customer creation.
+
+Features include:
+
+- Create customer
+- Store selected customer
+- Auto-fill customer ID during booking
+- Customer confirmation display
+
+Customer fields:
+
+- Name
+- Email
+- Phone number
+
+#### Booking Management
+
+Users can:
+
+- Create bookings
+- Select customer, hotel, and room
+- Choose check-in/check-out dates
+- View selected room details
+- Load booking history
+- Filter bookings
+- Confirm bookings
+- Cancel bookings
+
+Booking filters include:
+
+- booking status
+- customer ID
+- hotel ID
+
+Supported booking actions:
+
+- `CONFIRM`
+- `CANCEL`
+
+Supported booking statuses:
+
+- `CONFIRMED`
+- `CANCELLED`
+
+### State Management
+
+React hooks are used for frontend state management.
+
+Main hooks used:
+
+- `useState`
+- `useEffect`
+- `useMemo`
+
+The application manages state for:
+
+- Authentication
+- Hotels
+- Rooms
+- Customers
+- Bookings
+- Filters
+- Notifications
+- Error handling
+- Loading states
+
+### UI and Styling
+
+The frontend uses Tailwind CSS for styling and responsive layouts.
+
+UI capabilities include:
+
+- Responsive dashboard layout
+- Modern hotel booking interface
+- Cards and metrics
+- Loading indicators
+- Dynamic notifications
+- Form validation visuals
+- Error handling UI
+- Success messages
+- Responsive grids
+- Search and filter forms
+
+Icons are implemented using `Lucide React`.
+
+Current UI sections include:
+
+- Authentication panel
+- Customer management panel
+- Booking management panel
+- Hotel search section
+- Room selection section
+- Booking dashboard
+
+### Error Handling
+
+The frontend implements centralized error handling.
+
+Current error handling includes:
+
+- API failure handling
+- Validation message rendering
+- Backend unavailable detection
+- Unauthorized session logout
+- HTTP status display
+- Field-level error rendering
+
+Examples:
+
+- Invalid credentials
+- Validation errors
+- Backend server unavailable
+- Unauthorized access
+- Network failure
+
+### Local Development Setup
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Start frontend:
+
+```bash
+npm run dev
+```
+
+Default frontend URL:
+
+```text
+http://localhost:5173
+```
+
+### Vite Proxy Configuration
+
+The frontend uses Vite proxy configuration to communicate with the Spring Boot backend.
+
+Current proxy:
+
+```javascript
+server: {
+  port: 5173,
+  proxy: {
+    "/api": {
+      target: "https://localhost:8080",
+      changeOrigin: true,
+      secure: false
+    }
+  }
+}
+```
+
+This allows frontend API calls such as:
+
+```text
+/api/auth/login
+```
+
+to automatically proxy to:
+
+```text
+https://localhost:8080/api/auth/login
+```
+
+### Frontend Project Structure
+
+Example structure:
+
+```text
+src/
+│── api.js
+│── App.jsx
+│── main.jsx
+│── styles.css
+│
+public/
+│
+index.html
+vite.config.js
+```
+
+### Frontend Highlights
+
+- React + Vite architecture
+- JWT authentication flow
+- Role-based UI rendering
+- API proxy integration
+- Centralized API request utility
+- Customer creation workflow
+- Hotel availability search
+- Room filtering and selection
+- Booking creation and management
+- Booking confirmation and cancellation
+- Error handling and validation
+- Tailwind responsive UI
+- Lucide React icons
+- Persistent login using local storage
+- Dynamic dashboard rendering
+- Pagination support
+- Search, filtering, and sorting
+
 ## Repository
 
 https://github.com/priyanshubirlaa/Hotel_Booking_System
-

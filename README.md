@@ -690,6 +690,7 @@ vite.config.js
 - Pagination support
 - Search, filtering, and sorting
 
-## Repository
+<img width="1920" height="923" alt="image" src="https://github.com/user-attachments/assets/5c777265-aad0-4325-b8f7-2cd87da3f1a4" />
 
-https://github.com/priyanshubirlaa/Hotel_Booking_System
+
+

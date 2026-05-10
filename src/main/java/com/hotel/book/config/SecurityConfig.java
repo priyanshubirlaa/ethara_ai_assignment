@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -39,7 +40,8 @@ public class SecurityConfig {
         .accessDeniedHandler(accessDeniedHandler)
     )
     .authorizeHttpRequests(auth -> auth
-        .requestMatchers("/api/auth/login").permitAll()
+        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+        .requestMatchers("/api/auth/login", "/api/auth/register").permitAll()
 
         // ADMIN only
         .requestMatchers("/api/hotels/**").hasRole("ADMIN")
@@ -50,7 +52,6 @@ public class SecurityConfig {
         .requestMatchers("/api/bookings/**", "/api/reviews/**").hasAnyRole("ADMIN", "STAFF")
 
         .requestMatchers("/api/health","/swagger-ui/**", "/v3/**", "/actuator/**").permitAll()
-        .requestMatchers("/api/auth/register").hasRole("ADMIN")
         
 
         .anyRequest().authenticated()

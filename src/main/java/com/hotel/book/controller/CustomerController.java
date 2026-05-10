@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/customers")
+@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
 public class CustomerController {

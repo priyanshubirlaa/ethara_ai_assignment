@@ -28,6 +28,14 @@ public class JwtFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
 
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return "OPTIONS".equalsIgnoreCase(request.getMethod())
+                || "/api/auth/login".equals(path)
+                || "/api/auth/register".equals(path)
+                || "/api/health".equals(path);
+    }
 
     @Override
 protected void doFilterInternal(HttpServletRequest request,

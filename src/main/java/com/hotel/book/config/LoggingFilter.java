@@ -49,7 +49,7 @@ public class LoggingFilter extends OncePerRequestFilter {
 
         // If this is a secured API endpoint and there is NO Authorization header at all,
         // return a clear 401 JSON error immediately.
-        if (isSecuredApi(uri)
+        if (isSecuredApi(request)
                 && (request.getHeader("Authorization") == null
                     || request.getHeader("Authorization").isBlank())) {
 
@@ -95,7 +95,13 @@ public class LoggingFilter extends OncePerRequestFilter {
         }
     }
 
-    private boolean isSecuredApi(String uri) {
+    private boolean isSecuredApi(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            return false;
+        }
+
         if (uri == null) {
             return false;
         }
@@ -106,16 +112,14 @@ public class LoggingFilter extends OncePerRequestFilter {
         }
 
         if (uri.startsWith("/api/auth/login")
+                || uri.startsWith("/api/auth/register")
                 || uri.startsWith("/api/health")
                 || uri.startsWith("/swagger-ui")
                 || uri.startsWith("/v3/")) {
             return false;
         }
 
-        // /api/auth/register is ADMIN only in SecurityConfig, but still requires JWT
-        // so we treat it as secured here.
         return true;
     }
 }
-
 
